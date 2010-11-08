@@ -10,7 +10,14 @@ class World:
 		self.width    = width
 		self.height   = height
 		self.passable = [ [  True  ] * width for y in range(0, height) ]
+
+	def __key(self):
+		# TODO: Include self.passable.
+		return (self.width, self.height)
 	
+	def __eq__(self, state):
+		return self.__key() == state.__key()
+
 	def __hash__(self):
 		return hash(self.__key())
 
@@ -28,6 +35,16 @@ class State:
 		self.y       = y
 		self.prob    = prob
 		self.rewards = [ [ reward ] * world.width for y in range(0, world.height) ]
+
+	def __key(self):
+		# TODO: Include self.rewards.
+		return (self.world, self.x, self.y, self.prob)
+	
+	def __eq__(self, state):
+		return self.__key() == state.__key()
+
+	def __hash__(self):
+		return hash(self.__key())
 
 	def AddReward(self, x, y, value):
 		self.rewards[y][x] = value
@@ -73,11 +90,11 @@ class QLearningAgent:
 		self.start   = start
 
 	def SetValue(self, state, action, value):
-		self.q[(state.x, state.y, action)] = value
+		self.q[(state, action)] = value
 
 	def GetValue(self, state, action):
-		if (state.x, state.y, action) in self.q:
-			return self.q[(state.x, state.y, action)]
+		if (state, action) in self.q:
+			return self.q[(state, action)]
 		else:
 			return self.start
 
@@ -96,7 +113,6 @@ def Simulate(state, agent):
 	action = agent.Deliberate(state)
 	future, reward = state.Act(action)
 	agent.Learn(state, action, future, reward)
-
 	return (future, action, reward)
 
 def main(argv):

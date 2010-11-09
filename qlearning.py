@@ -30,11 +30,12 @@ class World:
 	
 class State:
 	def __init__(self, world, x, y, prob, reward):
-		self.world   = world
-		self.x       = x
-		self.y       = y
-		self.prob    = prob
-		self.rewards = [ [ reward ] * world.width for y in range(0, world.height) ]
+		self.world    = world
+		self.x        = x
+		self.y        = y
+		self.prob     = prob
+		self.rewards  = [ [ reward ] * world.width for y in range(0, world.height) ]
+		self.terminal = [ [ False  ] * world.width for y in range(0, world.height) ]
 
 	def __key(self):
 		# TODO: Include self.rewards.
@@ -48,6 +49,9 @@ class State:
 
 	def AddReward(self, x, y, value):
 		self.rewards[y][x] = value
+	
+	def AddTerminal(self, x, y):
+		self.terminal[y][x] = True
 
 	def GetReward(self):
 		return self.rewards[self.y][self.x]
@@ -55,6 +59,9 @@ class State:
 	def GetActions(self):
 		return [ 'L', 'R', 'U', 'D' ]
 	
+	def IsTerminal(self):
+		return self.terminal[self.y][self.x]
+
 	def Act(self, action):
 		# Express movement as the complex number x + y*i with a probability of
 		# p to move orthogonal to the desired direction of movement.
@@ -132,17 +139,24 @@ def main(argv):
 	state = State(world, 0, 0, 0.20, -0.04)
 	state.AddReward(3, 2, +1)
 	state.AddReward(3, 1, -1)
+	state.AddTerminal(3, 2)
+	state.AddTerminal(3, 1)
 
 	# Learn the optimal policy using Q-Learning with alpha = gamma = 0.20.
 	agent = QLearningAgent(0.2, 0.2, 0.0)
 
-	states    = [ None ] * (n + 1)
-	actions   = [ None ] * n
-	rewards   = [ None ] * n
-	states[0] = state
+	states    = [ state ]
+	actions   = [ ]
+	rewards   = [ ]
 
 	for t in range(0, n):
-		states[t + 1], actions[t], rewards[t] = Simulate(states[t], agent)
+		if state.IsTerminal():
+			break
+		
+		state, action, reward = Simulate(state, agent)
+		states.append(state)
+		actions.append(action)
+		rewards.append(reward)
 
 	print('Total Reward   = {0}'.format(sum(rewards)))
 	print('Average Reward = {0}'.format(sum(rewards) / n))

@@ -146,16 +146,13 @@ def main(argv):
 	state.AddTerminal(3, 1)
 
 	# Learn the optimal policy using Q-Learning with alpha = gamma = 0.20.
-	agent = QLearningAgent(0.2, 0.2, 0.0)
+	agent = QLearningAgent(0.2, 0.2, 1.0)
 
 	states    = [ state ]
 	actions   = [ ]
 	rewards   = [ ]
 
-	for t in range(0, n):
-		if state.IsTerminal():
-			break
-		
+	while not state.IsTerminal():
 		state, action, reward = Simulate(state, agent)
 		states.append(state)
 		actions.append(action)

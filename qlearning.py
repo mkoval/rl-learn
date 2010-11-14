@@ -34,6 +34,7 @@ class State:
 		self.x        = x
 		self.y        = y
 		self.prob     = prob
+		self.default  = reward
 		self.rewards  = [ [ reward ] * world.width for y in range(0, world.height) ]
 		self.terminal = [ [ False  ] * world.width for y in range(0, world.height) ]
 
@@ -79,13 +80,15 @@ class State:
 			delta *= -1j
 
 		# Restrict movement to open squares. Hitting a wall incurs the same
-		# reward as any other movement.
+		# reward as landing on the square normally.
 		state_next = copy.deepcopy(self)
-		reward     = self.rewards[self.y][self.x]
 
 		if self.world.IsPassable(self.x + int(delta.real), self.y + int(delta.imag)):
 			state_next.x += int(delta.real)
 			state_next.y += int(delta.imag)
+			reward        = self.rewards[state_next.y][state_next.x]
+		else:
+			reward = self.default
 
 		return (state_next, reward)
 
@@ -125,10 +128,10 @@ def Simulate(state, agent):
 def main(argv):
 	if len(argv) <= 1:
 		print('err: incorrect number of arguments', file=sys.stderr)
-		print('usage: ./rl n', file=sys.stderr)
+		print('usage: ./rl ticks', file=sys.stderr)
 		return 1
 
-	n = int(argv[1])
+	ticks = int(argv[1])
 
 	# Grid world depicted on p.646 of Russel and Norvig (3rd Ed.).
 	world = World(4, 3)
@@ -159,7 +162,7 @@ def main(argv):
 		rewards.append(reward)
 
 	print('Total Reward   = {0}'.format(sum(rewards)))
-	print('Average Reward = {0}'.format(sum(rewards) / n))
+	print('Average Reward = {0}'.format(sum(rewards) / len(rewards)))
 	return 0
 
 if __name__ == '__main__':

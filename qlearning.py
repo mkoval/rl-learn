@@ -119,19 +119,29 @@ class QLearningAgent:
 
 		self.SetValue(state, action, q_new)
 
-def Simulate(state, agent):
-	action = agent.Deliberate(state)
-	future, reward = state.Act(action)
-	agent.Learn(state, action, future, reward)
-	return (future, action, reward)
+def Simulate(world, agent, episodes):
+	rewards = [ 0.0 ] * episodes
+
+	for episode in range(0, episodes):
+		state = copy.deepcopy(world)
+
+		while not state.IsTerminal():
+			action = agent.Deliberate(state)
+			future, reward = state.Act(action)
+			agent.Learn(state, action, future, reward)
+
+			state             = future
+			rewards[episode] += reward
+	
+	return rewards
 
 def main(argv):
 	if len(argv) <= 1:
 		print('err: incorrect number of arguments', file=sys.stderr)
-		print('usage: ./rl ticks', file=sys.stderr)
+		print('usage: ./rl n', file=sys.stderr)
 		return 1
 
-	ticks = int(argv[1])
+	n = int(argv[1])
 
 	# Grid world depicted on p.646 of Russel and Norvig (3rd Ed.).
 	world = World(4, 3)
@@ -148,15 +158,7 @@ def main(argv):
 	# Learn the optimal policy using Q-Learning with alpha = gamma = 0.20.
 	agent = QLearningAgent(0.2, 0.2, 1.0)
 
-	states    = [ state ]
-	actions   = [ ]
-	rewards   = [ ]
-
-	while not state.IsTerminal():
-		state, action, reward = Simulate(state, agent)
-		states.append(state)
-		actions.append(action)
-		rewards.append(reward)
+	rewards = Simulate(state, agent, n)
 
 	print('Total Reward   = {0}'.format(sum(rewards)))
 	print('Average Reward = {0}'.format(sum(rewards) / len(rewards)))

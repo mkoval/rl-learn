@@ -2,6 +2,9 @@
 
 from __future__ import print_function
 import copy
+import csv
+import optparse
+import numpy
 import random
 import sys
 
@@ -120,7 +123,7 @@ class QLearningAgent:
 		self.SetValue(state, action, q_new)
 
 def Simulate(world, agent, episodes):
-	rewards = [ 0.0 ] * episodes
+	rewards = numpy.zeros(episodes)
 
 	for episode in range(0, episodes):
 		state = copy.deepcopy(world)
@@ -136,12 +139,29 @@ def Simulate(world, agent, episodes):
 	return rewards
 
 def main(argv):
-	if len(argv) <= 1:
+	if len(argv) <= 4:
 		print('err: incorrect number of arguments', file=sys.stderr)
-		print('usage: ./rl n', file=sys.stderr)
+		print('usage: ./rl alpha gamma n it', file=sys.stderr)
 		return 1
 
-	n = int(argv[1])
+	# Parse the command-line parameters of alpha, beta, and n.
+	try:
+		alpha = float(argv[1])
+		gamma = float(argv[2])
+		if not 0 <= alpha <= 1.0 or not 0 <= gamma <= 1.0:
+			raise Exception()
+	except:
+		print('err: alpha and gamma must be between zero and one', file=sys.stderr)
+		return 1
+	
+	try:
+		n  = int(argv[3])
+		it = int(argv[4])
+		if n < 0 or it < 0:
+			raise Exception()
+	except:
+		print('err: number of iterations must be a positive integer', file=sys.stderr)
+		return 1
 
 	# Grid world depicted on p.646 of Russel and Norvig (3rd Ed.).
 	world = World(4, 3)
@@ -156,12 +176,18 @@ def main(argv):
 	state.AddTerminal(3, 1)
 
 	# Learn the optimal policy using Q-Learning with alpha = gamma = 0.20.
-	agent = QLearningAgent(0.2, 0.2, 1.0)
+	time        = numpy.arange(0, n)
+	mean_reward = numpy.zeros(n)
 
-	rewards = Simulate(state, agent, n)
+	for i in range(0, it):
+		agent = QLearningAgent(alpha, gamma, 0.0)
+		mean_reward += Simulate(state, agent, n)
 
-	print('Total Reward   = {0}'.format(sum(rewards)))
-	print('Average Reward = {0}'.format(sum(rewards) / len(rewards)))
+	mean_reward /= it
+
+	# Save the output as a CSV file for analysis and/or plotting.
+	writer  = csv.writer(sys.stdout)
+	writer.writerows(zip(time, mean_reward))
 	return 0
 
 if __name__ == '__main__':

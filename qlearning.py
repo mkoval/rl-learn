@@ -186,7 +186,7 @@ def main(argv):
 	mean_reward /= it
 
 	# Save the output as a CSV file for analysis and/or plotting.
-	writer  = csv.writer(sys.stdout)
+	writer  = csv.writer(sys.stdout, delimiter='\t')
 	writer.writerows(zip(time, mean_reward))
 	return 0
 

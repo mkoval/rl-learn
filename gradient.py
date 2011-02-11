@@ -56,6 +56,7 @@ def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
 	state[0] = world.GetState()
 
 	for t in range(1, tmax):
+		print('t = {0} ---> w1 = {1:.3f}, w2 = {2:.3f}'.format(t, w[0], w[1]))
 		action[t - 1]           = policy.ChooseAction(state[t - 1])
 		state[t], reward[t - 1] = world.DoAction(action[t - 1])
 

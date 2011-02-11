@@ -1,3 +1,5 @@
+#!/bin/env python
+
 import math, random, sys
 
 class LQRWorld:
@@ -62,7 +64,7 @@ def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
 			weights[i] += alpha * (1 - gamma) * delta_w
 
 		policy.Update(weights)
-	
+
 	return policy
 
 def main(args):

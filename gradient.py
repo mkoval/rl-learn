@@ -1,10 +1,10 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 import math, random, sys
 
 class LQRWorld:
 	def __init__(self, minval, maxval, x0, stddev):
-		self.x      = min(max(x0, self.minval), self.maxval)
+		self.x      = min(max(x0, minval), maxval)
 		self.stddev = stddev
 		self.minval = minval
 		self.maxval = maxval
@@ -20,13 +20,16 @@ class LQRWorld:
 		return (self.x, reward)
 
 class LQRPolicy:
-	def __init__(weights):
+	def __init__(self, weights):
 		self.w1 = weights[0]
 		self.w2 = weights[1]
 	
 	def Update(self, weights):
 		self.w1 = weights[0]
 		self.w2 = weights[1]
+
+	def GetParams(self):
+		return 2
 	
 	def GetPartial(self, i, state, action):
 		mu    = self.w1 * state
@@ -46,8 +49,9 @@ def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
 	state   = [ 0.0 ] * tmax
 	reward  = [ 0.0 ] * tmax
 	action  = [ 0.0 ] * tmax
-	D       = [ [ 0.0 ] * tmax for i in range(0, k) ]
-	weights = [ 0.0 ] * 2
+	D = [ [ 0.0 ] * tmax for i in range(0, policy.GetParams()) ]
+	e = [ 0.0 ] * 2
+	w = [ 0.0 ] * 2
 
 	state[0] = world.GetState()
 
@@ -57,13 +61,13 @@ def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
 
 		D[i][t] = [ 0.0 ] * 2
 
-		for i in range(0, k):
+		for i in range(0, policy.GetParams()):
 			e[i]    = policy.GetPartial(i, state[t], action[t - 1])
 			D[i][t] = e[i] + gamma * D[i][t - 1]
 			delta_w = (reward[t - 1] - baseline) * D[i][t]
-			weights[i] += alpha * (1 - gamma) * delta_w
+			w[i]   += alpha * (1 - gamma) * delta_w
 
-		policy.Update(weights)
+		policy.Update(w)
 
 	return policy
 
@@ -80,8 +84,8 @@ def main(args):
 
 	start  = random.uniform(minval, maxval)
 	world  = LQRWorld(minval, maxval, start, stddev)
-	policy = LQRPolicy(init_w1, init_w2)
+	policy = LQRPolicy([ init_w1, init_w2 ])
 	LearnSGA(world, policy, alpha, gamma, baseline, tmax)
 
-if __name == '__main__':
+if __name__ == '__main__':
 	sys.exit(main(sys.argv))

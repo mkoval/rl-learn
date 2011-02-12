@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import math, random, sys
+import math, numpy, random, sys
 
 class LQRWorld:
 	def __init__(self, minval, maxval, x0, stddev):
@@ -8,7 +8,7 @@ class LQRWorld:
 		self.stddev = stddev
 		self.minval = minval
 		self.maxval = maxval
-	
+
 	def GetState(self):
 		return self.x
 
@@ -21,52 +21,56 @@ class LQRWorld:
 
 class LQRPolicy:
 	def __init__(self, weights):
-		self.w1 = weights[0]
-		self.w2 = weights[1]
-	
+		self.Update(weights)
+
 	def Update(self, weights):
 		self.w1 = weights[0]
 		self.w2 = weights[1]
-
-	def GetParams(self):
+	
+	def GetDims(self):
 		return 2
-	
-	def GetPartial(self, i, state, action):
-		mu    = self.w1 * state
-		sigma = 1.0 / (1 + math.exp(-self.w2))
 
-		if i == 0:
-			return (action - mu) * state
-		else:
-			return (pow(action - mu, 2) - pow(sigma, 2)) * (1 - sigma)
-	
+	def GetWeights(self):
+		return numpy.array([ self.w1, self.w2 ])
+
+	def GetParams(self, state):
+		 mu    = self.w1 * state
+		 sigma = 1.0 / (1 + math.exp(-self.w2))
+		 return numpy.array([ mu, sigma ])
+
+	def GetEligibility(self, state, action):
+		mu, sigma = self.GetParams(state)
+		e1 = (action - mu) * state
+		e2 = (pow(action - mu, 2) - pow(sigma, 2)) * (1 - sigma)
+		return numpy.array([ e1, e2 ])
+
 	def ChooseAction(self, state):
-		mu    = self.w1 * state
-		sigma = 1.0 / (1 + math.exp(-self.w2))
+		mu, sigma = self.GetParams(state)
 		return random.gauss(mu, sigma)
 
 def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
-	state   = [ 0.0 ] * tmax
-	reward  = [ 0.0 ] * tmax
-	action  = [ 0.0 ] * tmax
-	D = [ [ 0.0 ] * tmax for i in range(0, policy.GetParams()) ]
-	e = [ 0.0 ] * 2
-	w = [ 0.0 ] * 2
-
+	state    = numpy.zeros(tmax + 1)
+	reward   = numpy.zeros(tmax + 1)
+	action   = numpy.zeros(tmax + 1)
 	state[0] = world.GetState()
 
-	for t in range(1, tmax):
-		print('t = {0} ---> w1 = {1:.3f}, w2 = {2:.3f}'.format(t, w[0], w[1]))
-		action[t - 1]           = policy.ChooseAction(state[t - 1])
-		state[t], reward[t - 1] = world.DoAction(action[t - 1])
+	k  = policy.GetDims()
+	w  = policy.GetWeights()
+	d  = numpy.zeros(k)
+	e  = numpy.zeros(k)
+	dw = numpy.zeros(k)
 
-		D[i][t] = [ 0.0 ] * 2
+	for t in range(0, tmax):
+		action[t] = policy.ChooseAction(state[t])
+		state[t + 1], reward[t] = world.DoAction(action[t])
 
-		for i in range(0, policy.GetParams()):
-			e[i]    = policy.GetPartial(i, state[t], action[t - 1])
-			D[i][t] = e[i] + gamma * D[i][t - 1]
-			delta_w = (reward[t - 1] - baseline) * D[i][t]
-			w[i]   += alpha * (1 - gamma) * delta_w
+		e  = policy.GetEligibility(state[t], action[t])
+		d  = e + gamma * d
+		dw = (reward[t] - baseline) * d
+		w  = w + alpha * (1 - gamma) * dw
+
+		mu, sigma = policy.GetParams(state[t])
+		print('t = {0: 4}: mu = {1: 5.3f}, sigma = {2: 5.3f}'.format(t, mu, sigma))
 
 		policy.Update(w)
 
@@ -82,8 +86,17 @@ def main(args):
 	stddev   = 0.50
 	init_w1  = 0.35 + random.uniform(-0.15, +0.15)
 	init_w2  = 0.00
+	start    = 1.00
 
-	start  = random.uniform(minval, maxval)
+	print('Simulating {0} steps with parameters:'.format(tmax))
+	print('  learning rate   = {0: .3f}'.format(alpha))
+	print('  discount factor = {0: .3f}'.format(gamma))
+	print('  baseline        = {0: .3f}'.format(baseline))
+	print('  w1(init)        = {0: .3f}'.format(init_w1))
+	print('  w2(init)        = {0: .3f}'.format(init_w2))
+	print('  state(init)     = {0: .3f}'.format(start))
+	print('')
+
 	world  = LQRWorld(minval, maxval, start, stddev)
 	policy = LQRPolicy([ init_w1, init_w2 ])
 	LearnSGA(world, policy, alpha, gamma, baseline, tmax)

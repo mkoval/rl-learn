@@ -48,3 +48,23 @@ class Policy:
 		mu    = self.w[0] * s
 		sigma = 1 / (1 + exp(-self.w[1]))
 		return gauss(mu, sigma)
+
+def learn_sga(world, policy, b, tmax, alpha, gamma):
+	s = [ None ] * (tmax + 1)
+	a = [ None ] * (tmax + 1)
+	r = [ 0.0 ]  * (tmax + 1)
+
+	D = zeros(policy.GetDims())
+	W = policy.GetParams()
+	s[0] = world.GetState()
+
+	for t in range(0, tmax):
+		# Select an action using the policy and perform it on the world.
+		a[t] = policy.ChooseAction(s[t])
+		a[t], r[t], s[t + 1] = world.DoAction(a[t])
+
+		# Move in along the gradient of the expected reward function.
+		e = policy.GetEligibility(s[t], a[t])
+		D = e + gamma * D
+		W = W + alpha * (1 - gamma) * (r[t] - b) * D
+		policy.SetParams(W)

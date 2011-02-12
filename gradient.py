@@ -4,7 +4,8 @@ import math, numpy, random, sys
 
 class LQRWorld:
 	def __init__(self, minval, maxval, x0, stddev):
-		self.x      = min(max(x0, minval), maxval)
+		self.x = x0
+		self.x = min(max(self.x, minval), maxval)
 		self.stddev = stddev
 		self.minval = minval
 		self.maxval = maxval
@@ -14,7 +15,8 @@ class LQRWorld:
 
 	def DoAction(self, action):
 		reward = -pow(self.x, 2) - pow(action, 2)
-		noise  = random.gauss(0, self.stddev)
+		#noise  = random.gauss(0, self.stddev)
+		noise  = 0.0
 		self.x = self.x + action + noise
 		self.x = min(max(self.x, self.minval), self.maxval)
 		return (self.x, reward)
@@ -31,22 +33,26 @@ class LQRPolicy:
 		return 2
 
 	def GetWeights(self):
-		return numpy.array([ self.w1, self.w2 ])
+		return numpy.array([ self.w1, self.w2 ], dtype=numpy.double)
 
 	def GetParams(self, state):
 		 mu    = self.w1 * state
 		 sigma = 1.0 / (1 + math.exp(-self.w2))
-		 return numpy.array([ mu, sigma ])
+		 return numpy.array([ mu, sigma ], dtype=numpy.double)
 
 	def GetEligibility(self, state, action):
 		mu, sigma = self.GetParams(state)
 		e1 = (action - mu) * state
 		e2 = (pow(action - mu, 2) - pow(sigma, 2)) * (1 - sigma)
-		return numpy.array([ e1, e2 ])
+		return numpy.array([ e1, e2 ], dtype=numpy.double)
 
 	def ChooseAction(self, state):
 		mu, sigma = self.GetParams(state)
-		return random.gauss(mu, sigma)
+
+		# XXX: Magic numbers.
+		action = random.gauss(mu, sigma)
+		action = min(max(action, -4.0), +4.0)
+		return action
 
 def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
 	state    = numpy.zeros(tmax + 1)
@@ -61,25 +67,39 @@ def LearnSGA(world, policy, alpha, gamma, baseline, tmax):
 	dw = numpy.zeros(k)
 
 	for t in range(0, tmax):
+		# XXX: Spammy debugging statement.
+		mu, sigma = policy.GetParams(state[t])
+
+		# Choose an action using the policy and act on the environment.
 		action[t] = policy.ChooseAction(state[t])
 		state[t + 1], reward[t] = world.DoAction(action[t])
 
+		# Step the policy "up hill" in the direction of the gradient.
 		e  = policy.GetEligibility(state[t], action[t])
 		d  = e + gamma * d
 		dw = (reward[t] - baseline) * d
 		w  = w + alpha * (1 - gamma) * dw
-
-		mu, sigma = policy.GetParams(state[t])
-		print('t = {0: 4}: mu = {1: 5.3f}, sigma = {2: 5.3f}'.format(t, mu, sigma))
-
 		policy.Update(w)
+
+		print('t = {0}:\n'
+		      '  (s, a, r)   = ({1:.3f}, {2:.3f}, {3:.3f})\n'
+		      '  (dw1, dw2)  = ({4:.3f}, {5:.3f})\n'
+		      '  (w1, w2)    = ({6:.3f}, {7:.3f})\n'
+		      '  (mu, sigma) = ({8:.3f}, {9:.3f})\n'
+		      .format(t,
+		              state[t], action[t], reward[t],
+		              dw[0], dw[1],
+		              policy.w1, policy.w2,
+		              mu, sigma
+		      )
+		)
 
 	return policy
 
 def main(args):
 	minval   = -4
 	maxval   = +4
-	tmax     = 5000
+	tmax     = 10000
 	alpha    = 0.01
 	gamma    = 0.90
 	baseline = 0.00

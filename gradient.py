@@ -2,8 +2,9 @@
 
 from copy import deepcopy
 from math import exp
-from numpy import zeros
-from random import gauss
+from numpy import array, zeros
+from random import gauss, uniform
+from sys import argv, exit
 
 class Environment:
 	def __init__(self, s0, smin, smax):
@@ -49,7 +50,7 @@ class Policy:
 		sigma = 1 / (1 + exp(-self.w[1]))
 		return gauss(mu, sigma)
 
-def learn_sga(world, policy, b, tmax, alpha, gamma):
+def learn_sga(world, policy, tmax, alpha, gamma, b):
 	s = [ None ] * (tmax + 1)
 	a = [ None ] * (tmax + 1)
 	r = [ 0.0 ]  * (tmax + 1)
@@ -68,3 +69,23 @@ def learn_sga(world, policy, b, tmax, alpha, gamma):
 		D = e + gamma * D
 		W = W + alpha * (1 - gamma) * (r[t] - b) * D
 		policy.SetParams(W)
+
+def main(args):	
+	# SGA Parameters
+	alpha    = 0.01
+	gamma    = 0.90
+	baseline = 0.00
+	steps    = 1001
+
+	# World and Policy Parameters
+	state_min = -4.0
+	state_max = +4.0
+	state     = uniform(state_min, state_max)
+	weights   = array([ 0.35 + uniform(-0.15, +0.15), 0.00 ])
+
+	world  = Environment(state, state_min, state_max)
+	policy = Policy(weights)
+	learn_sga(world, policy, steps, alpha, gamma, baseline)
+
+if __name__ == '__main__':
+	exit(main(argv))

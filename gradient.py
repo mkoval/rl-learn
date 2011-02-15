@@ -19,8 +19,8 @@ class Environment:
 		snew   = self.s + a
 		snew   = min(max(snew, self.smin), self.smax)
 		a      = snew - self.s
+		r      = -(self.s ** 2) - (a ** 2)
 		self.s = snew
-		r      = -pow(snew, 2) - pow(a, 2)
 		return (a, r, snew)
 
 class Policy:
@@ -37,12 +37,15 @@ class Policy:
 		return len(self.w)
 
 	def GetEligibility(self, s, a):
-		k     = len(self.w)
 		mu    = self.w[0] * s
 		sigma = 1 / (1 + exp(-self.w[1]))
-		e     = zeros(k)
-		e[0]  = (a - mu) * s
-		e[1]  = (pow(a - mu, 2) - pow(sigma, 2)) * (1 - sigma)
+
+		e       = zeros(len(self.w))
+		e_mu    = (a - mu) / sigma ** 2
+		e_sigma = ((a - mu) ** 2 - sigma ** 2) / sigma ** 3
+
+		e[0] = e_mu * s
+		e[1] = e_sigma * exp(self.w[1]) / (exp(self.w[1]) + 1) ** 2
 		return e
 
 	def ChooseAction(self, s):
@@ -70,12 +73,14 @@ def learn_sga(world, policy, tmax, alpha, gamma, b):
 		W = W + alpha * (1 - gamma) * (r[t] - b) * D
 		policy.SetParams(W)
 
+		print('(w1, w2) = ({0}, {1})'.format(policy.w[0], policy.w[1]))
+
 def main(args):	
 	# SGA Parameters
 	alpha    = 0.01
 	gamma    = 0.90
 	baseline = 0.00
-	steps    = 1001
+	steps    = 5001
 
 	# World and Policy Parameters
 	state_min = -4.0

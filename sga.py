@@ -13,10 +13,9 @@ def constrain(x, x_min, x_max):
 	return max(min(x, x_max), x_min)
 
 def ChooseAction(w, s):
-	mu    = w[0]
+	mu    = w[0] * s
 	sigma = 1 / (1 + math.exp(-w[1]))
-	gain  = random.gauss(mu, sigma)
-	return s * gain
+	return random.gauss(mu, sigma)
 
 def PerformAction(s0, a0):
 	s1 = max(min(s0 + a0, +4), -4)
@@ -57,8 +56,8 @@ def EstimateUtility(w_min, w_max, w_num, s, t_max, epsilon):
 	for i in itertools.product(i1, i2):
 		w = numpy.empty([ 2 ], dtype=float)
 		(w[0], w[1]) = (w1[i[0]], w2[i[1]])
-		U[i[0], i[1]]    = Rollout(w, s, t_max)
-		G[i[0], i[1], :] = Gradient(w, s, epsilon, t_max)
+		U[i[1], i[0]]    = Rollout(w, s, t_max)
+		G[i[1], i[0], :] = Gradient(w, s, epsilon, t_max)
 
 	return (U, G)
 
@@ -66,9 +65,9 @@ def main():
 	s_mu    = 0.0
 	s_sigma = 1e-3
 
-	w_min = [ -5, -10 ]
-	w_max = [ +5, +10 ]
-	w_num = [ 10,  10 ]
+	w_min = [ -5, -100 ]
+	w_max = [ +5, +100 ]
+	w_num = [ 25,   25 ]
 
 	t_max   = 25
 	num     = 25
@@ -81,7 +80,7 @@ def main():
 	W1, W2 = numpy.meshgrid(w1, w2)
 
 	for i in range(0, num):
-		s = random.gauss(0.0, 1.0)
+		s = 0.15 + random.uniform(-0.15, +0.15)
 		print('Simulating {0}/{1} start states'.format(i + 1, num))
 		dU, dG = EstimateUtility(w_min, w_max, w_num, s, t_max, epsilon)
 		U += dU
@@ -90,7 +89,7 @@ def main():
 	# Three-Dimensional Surface
 	figure  = pyplot.figure()
 	axis    = figure.gca(projection='3d')
-	surface = axis.plot_surface(W1, W2, U, cmap=matplotlib.cm.jet, rstride=1, cstride=1)
+	surface = axis.plot_surface(W1, W2, numpy.transpose(U), cmap=matplotlib.cm.jet, rstride=1, cstride=1)
 
 	# Gradient Vector Field
 	figure  = pyplot.figure()

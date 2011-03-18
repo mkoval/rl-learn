@@ -61,6 +61,16 @@ def EstimateUtility(w_min, w_max, w_num, s, t_max, epsilon):
 
 	return (U, G)
 
+def SGA(w, s0, alpha, epsilon, t_max, steps):
+	U = numpy.empty(steps, dtype=float)
+
+	for i in range(0, steps):
+		G = Gradient(w, s0, epsilon, t_max)
+		U[i] = Rollout(w, s0, t_max)
+		w = w + alpha * G
+	
+	return (w, U)
+
 def main():
 	s_mu    = 0.0
 	s_sigma = 1e-3
@@ -71,7 +81,7 @@ def main():
 
 	t_max   = 25
 	num     = 25
-	epsilon = 1
+	epsilon = 1.0
 
 	w1 = numpy.linspace(w_min[0], w_max[0], w_num[0])
 	w2 = numpy.linspace(w_min[1], w_max[1], w_num[1])
@@ -79,6 +89,7 @@ def main():
 	G = numpy.zeros([ w_num[0], w_num[1], 2 ], dtype=float)
 	W1, W2 = numpy.meshgrid(w1, w2)
 
+	"""
 	for i in range(0, num):
 		s = 0.15 + random.uniform(-0.15, +0.15)
 		print('Simulating {0}/{1} start states'.format(i + 1, num))
@@ -96,8 +107,24 @@ def main():
 	axis    = figure.gca()
 	quiver  = axis.quiver(W1, W2, G[:, :, 0], G[:, :, 1])
 	pyplot.show()
+	"""
 
-	print(G.shape)
+	Ut = numpy.zeros(1000, dtype=float)
+	for i in range(0, 100):
+		s0 = 0.15 + random.uniform(-0.15, +0.15)
+		w0 = numpy.array([ 0.35, 0.00 ])
+		w_max, U_sample = SGA(w0, s0, 0.001, epsilon, t_max, 1000)
+		Ut += U_sample
+		print('{0}/{1}, <w1, w2> = <{2}, {3}>'.format(i + 1, 100, w_max[0], w_max[1]))
+
+	Ut = Ut / 100
+
+	figure  = pyplot.figure()
+	axis    = figure.gca()
+	quiver  = axis.plot(range(0, 1000), Ut)
+	pyplot.show()
+
+	print(w_max)
 
 if __name__ == '__main__':
 	main()

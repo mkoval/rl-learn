@@ -20,7 +20,7 @@ def ChooseAction(w, s):
 def PerformAction(s0, a0):
 	s1 = max(min(s0 + a0, +4), -4)
 	a1 = s1 - s0
-	r1 = -pow(s0, 2) - pow(a1, 2)
+	r1 = -s0 ** 2 - a1 ** 2
 	return (s1, a1, r1)
 
 def Rollout(w, s, t_max):

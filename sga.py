@@ -31,7 +31,31 @@ def Rollout(w, s, t_max):
 		R       = R + r
 	return R / t_max
 
-def Gradient(w, s, epsilon, t_max):
+def ForwardDiffEstimator(w, s, epsilon, t_max):
+	k  = len(w)
+	dw = numpy.eye(k, dtype=float)
+	G  = numpy.zeros([ k ], dtype=float)
+
+	Uref = Rollout(w, s, t_max) 
+
+	for i in range(0, k):
+		Up = Rollout(w + dw[:, i] * epsilon, s, t_max)
+		G[i] = (Up - Uref) / epsilon
+	return G / k
+
+def ReverseDiffEstimator(w, s, epsilon, t_max):
+	k  = len(w)
+	dw = numpy.eye(k, dtype=float)
+	G  = numpy.zeros([ k ], dtype=float)
+
+	Uref = Rollout(w, s, t_max) 
+
+	for i in range(0, k):
+		Un = Rollout(w - dw[:, i] * epsilon, s, t_max)
+		G[i] = (Uref -  Un) / epsilon
+	return G / k
+
+def CenterDiffEstimator(w, s, epsilon, t_max):
 	k  = len(w)
 	dw = numpy.eye(k, dtype=float)
 	G  = numpy.zeros([ k ], dtype=float)
@@ -40,8 +64,9 @@ def Gradient(w, s, epsilon, t_max):
 		Up = Rollout(w + dw[:, i] * epsilon, s, t_max) 
 		Un = Rollout(w - dw[:, i] * epsilon, s, t_max)
 		G[i] = (Up - Un) / (2 * epsilon)
-	
 	return G / k
+
+Gradient = CenterDiffEstimator
 
 def EstimateUtility(w_min, w_max, w_num, s, t_max, epsilon):
 	k  = len(w_min)

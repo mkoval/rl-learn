@@ -21,8 +21,11 @@ class LQRWorld:
 		return (s1, a, r)
 
 class LQRPolicy:
+	def GetDims(self):
+		return 2
+	
 	def SeedParam(self):
-		return numpy.array([ random.uniform(0.35 - 0.15, 0.35 + 0.15), 0.00 ])
+		return numpy.array([ 0.35 + random.uniform(-0.15, +0.15), 0.00 ])
 
 	def GetEligibility(self, w, s, a):
 		e = numpy.zeros(len(w), dtype=float)

@@ -23,6 +23,16 @@ def PerformAction(s0, a0):
 	r1 = -s0 ** 2 - a1 ** 2
 	return (s1, a1, r1)
 
+def Eligibility(w, s, a):
+	e = numpy.zeros([ k ], dtype=float)
+
+	mu    = w[0] * s
+	sigma = 1 / (1 + math.exp(-w[1]))
+
+	e[0] = (a - mu) * s
+	e[1] = ((a - mu)**2 - sigma**2)(1 - sigma)
+	return e
+
 def Rollout(w, s, t_max):
 	R = 0
 	for t in range(0, t_max):
@@ -66,7 +76,27 @@ def CenterDiffEstimator(w, s, epsilon, t_max):
 		G[i] = (Up - Un) / (2 * epsilon)
 	return G / k
 
-Gradient = CenterDiffEstimator
+def LikelihoodRatioEstimator(w, s, epsilon, t_max):
+	k = len(w)
+	G = numpy.zeros([ k ], dtype=float)
+	n = 10
+
+	# TODO: What is n?
+	# TODO: Iterate until convergence.
+	for i in range(0, n):
+		e = numpy.zeros([ k ], dtype=float)
+		R = 0.0
+
+		# Perform a rollout to evaluate one trajectory.
+		for t in range(0, t_max):
+			a       = ChooseAction(w, s)
+			s, a, r = PerformAction(s, a)
+			e       = e + GetEligibility(w, s, a)
+			R       = R + (r - R) / (t - 1)
+
+		g = g + e * R
+
+	return G / n
 
 def EstimateUtility(w_min, w_max, w_num, s, t_max, epsilon):
 	k  = len(w_min)
@@ -86,7 +116,7 @@ def EstimateUtility(w_min, w_max, w_num, s, t_max, epsilon):
 
 	return (U, G)
 
-def SGA(w, s0, alpha, epsilon, t_max, steps):
+def PolicyGradient(Gradient, w, s0, alpha, epsilon, t_max, steps):
 	U = numpy.empty(steps, dtype=float)
 
 	for i in range(0, steps):
@@ -134,13 +164,15 @@ def main():
 	pyplot.show()
 	"""
 
+	algo = CenterDiffEstimator
 	Ut = numpy.zeros(1000, dtype=float)
+
 	for i in range(0, 100):
 		s0 = 0.15 + random.uniform(-0.15, +0.15)
 		w0 = numpy.array([ 0.35, 0.00 ])
-		w_max, U_sample = SGA(w0, s0, 0.001, epsilon, t_max, 1000)
+		w_max, U_sample = PolicyGradient(algo, w0, s0, 0.001, epsilon, t_max, 1000)
 		Ut += U_sample
-		print('{0}/{1}, <w1, w2> = <{2}, {3}>'.format(i + 1, 100, w_max[0], w_max[1]))
+		print('{0}/{1}, <w1, w2> = <{2}, {3}>'.format(i + 1, 100, w_max[0], w_max[1]), file=sys.stderr)
 
 	Ut = Ut / 100
 

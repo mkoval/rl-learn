@@ -24,13 +24,14 @@ def PerformAction(s0, a0):
 	return (s1, a1, r1)
 
 def Eligibility(w, s, a):
+	k = len(w)
 	e = numpy.zeros([ k ], dtype=float)
 
 	mu    = w[0] * s
 	sigma = 1 / (1 + math.exp(-w[1]))
 
 	e[0] = (a - mu) * s
-	e[1] = ((a - mu)**2 - sigma**2)(1 - sigma)
+	e[1] = ((a - mu)**2 - sigma**2) * (1 - sigma)
 	return e
 
 def Rollout(w, s, t_max):
@@ -83,18 +84,19 @@ def LikelihoodRatioEstimator(w, s, epsilon, t_max):
 
 	# TODO: What is n?
 	# TODO: Iterate until convergence.
+	# TODO: Use a non-zero baseline.
 	for i in range(0, n):
 		e = numpy.zeros([ k ], dtype=float)
 		R = 0.0
 
 		# Perform a rollout to evaluate one trajectory.
 		for t in range(0, t_max):
-			a       = ChooseAction(w, s)
+			a = ChooseAction(w, s)
 			s, a, r = PerformAction(s, a)
-			e       = e + GetEligibility(w, s, a)
-			R       = R + (r - R) / (t - 1)
+			e = e + Eligibility(w, s, a)
+			R = R + (r - R) / (t + 1)
 
-		g = g + e * R
+		G = G + e * R
 
 	return G / n
 
@@ -122,8 +124,13 @@ def PolicyGradient(Gradient, w, s0, alpha, epsilon, t_max, steps):
 	for i in range(0, steps):
 		G = Gradient(w, s0, epsilon, t_max)
 		U[i] = Rollout(w, s0, t_max)
+
+		# XXX: Cap the size of the gradient.
+		if numpy.linalg.norm(G) > 1.0:
+			G = G / numpy.linalg.norm(G)
+
 		w = w + alpha * G
-	
+
 	return (w, U)
 
 def main():
@@ -164,21 +171,23 @@ def main():
 	pyplot.show()
 	"""
 
-	algo = CenterDiffEstimator
-	Ut = numpy.zeros(1000, dtype=float)
+	algo    = LikelihoodRatioEstimator
+	trials  = 20
+	updates = 1000
+	Ut = numpy.zeros(updates, dtype=float)
 
-	for i in range(0, 100):
+	for i in range(0, trials):
 		s0 = 0.15 + random.uniform(-0.15, +0.15)
 		w0 = numpy.array([ 0.35, 0.00 ])
-		w_max, U_sample = PolicyGradient(algo, w0, s0, 0.001, epsilon, t_max, 1000)
+		w_max, U_sample = PolicyGradient(algo, w0, s0, 0.001, epsilon, t_max, updates)
 		Ut += U_sample
-		print('{0}/{1}, <w1, w2> = <{2}, {3}>'.format(i + 1, 100, w_max[0], w_max[1]), file=sys.stderr)
+		print('{0}/{1}, <w1, w2> = <{2}, {3}>'.format(i + 1, trials, w_max[0], w_max[1]))
 
-	Ut = Ut / 100
+	Ut = Ut / trials
 
 	figure  = pyplot.figure()
 	axis    = figure.gca()
-	quiver  = axis.plot(range(0, 1000), Ut)
+	quiver  = axis.plot(range(0, updates), Ut)
 	pyplot.show()
 
 	print(w_max)
